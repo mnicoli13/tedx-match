@@ -8,18 +8,19 @@ import pyspark
 #col per accedere una colonna
 #collect list, ho in input un array python per produrre una lista univoca
 #array join
-from pyspark.sql.functions import col, collect_list, array_join, struct
-
+from pyspark.sql.functions import col, collect_list, array_join 
 
 from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
-from awsglue.dynamicframe import DynamicFrame
+
+
+
 
 ##### FROM FILES
-tedx_dataset_path = "s3://tedx-2025-data-mp-27042025/final_list.csv"
+tedx_dataset_path = "s3://tedx-2025-data-mp-07092025/final_list.csv"
 
 ###### READ PARAMETERS
 args = getResolvedOptions(sys.argv, ['JOB_NAME'])
@@ -58,7 +59,7 @@ print(f"Number of items from RAW DATA {count_items}")
 print(f"Number of items from RAW DATA with NOT NULL KEY {count_items_null}")
 
 ## READ THE DETAILS
-details_dataset_path = "s3://tedx-2025-data-mp-27042025/details.csv"
+details_dataset_path = "s3://tedx-2025-data-mp-07092025/details.csv"
 details_dataset = spark.read \
     .option("header","true") \
     .option("quote", "\"") \
@@ -79,7 +80,7 @@ tedx_dataset_main = tedx_dataset.join(details_dataset, tedx_dataset.id == detail
 tedx_dataset_main.printSchema()
 
 ## READ TAGS DATASET
-tags_dataset_path = "s3://tedx-2025-data-mp-27042025/tags.csv"
+tags_dataset_path = "s3://tedx-2025-data-mp-07092025/tags.csv"
 tags_dataset = spark.read.option("header","true").csv(tags_dataset_path)
 
 
@@ -96,45 +97,14 @@ tags_dataset_agg.printSchema()
 
 # tedx_dataset_agg.printSchema()
 
-watch_next_dataset_path = "s3://tedx-2025-data-mp-27042025/related_videos.csv"
-watch_next_dataset = spark.read \
-    .option("header","true") \
-    .csv(watch_next_dataset_path) \
-    .select(
-        col("id").alias("id_ref"),
-        col("internalId"),
-        col("related_id"),
-        col("slug"),
-        col("title"),
-        col("duration"),
-        col("viewedCount"),
-        col("presenterDisplayName")
-    )
-    
-# crea un struct per ogni video correlato
-watch_next_struct = watch_next_dataset.select(
-    col("id_ref"),
-    struct(
-        col("related_id").alias("_id"),
-        col("slug"),
-        col("title"),
-        col("duration"),
-        col("viewedCount"),
-        col("presenterDisplayName")
-    ).alias("related_video")
-)
-
-# raggruppa per talk (id_ref) e colleziona tutti i struct in un array
-watch_next_dataset_agg = watch_next_struct \
-    .groupBy("id_ref") \
-    .agg(collect_list("related_video").alias("watch_next"))
-
-watch_next_dataset_agg.printSchema()
+watch_next_dataset_path = "s3://tedx-2025-data-mp-07092025/related_videos.csv"
+watch_next_dataset = spark.read.option("header","true").csv(watch_next_dataset_path)
 
 # CREATE THE AGGREGATE MODEL, ADD TAGS TO TEDX_DATASET
 #group by id in quanto voglio raggruppare i tag per talk
 #collect list mi trasforma un elenco di tag in un'array
 #avrò 2 colonne id_ref e tags
+watch_next_dataset_agg = watch_next_dataset.groupBy(col("id").alias("id_ref")).agg(collect_list("related_id").alias("watch_next"))
 watch_next_dataset_agg.printSchema()
 tedx_dataset_agg = tedx_dataset_main \
     .join(tags_dataset_agg, col("id") == tags_dataset_agg.id_ref, "left") \
@@ -150,7 +120,7 @@ write_mongo_options = {
     "collection": "tedx_data",
     "ssl": "true",
     "ssl.domain_match": "false"}
-
+from awsglue.dynamicframe import DynamicFrame
 tedx_dataset_dynamic_frame = DynamicFrame.fromDF(tedx_dataset_agg, glueContext, "nested")
 
 #scrivo il dataset in mongo
