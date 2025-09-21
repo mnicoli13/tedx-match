@@ -5,7 +5,9 @@ const UserSchema = new mongoose.Schema({
   first_name: String,
   last_name: String,
   username: String,
-  likes: mongoose.Schema.Types.Mixed
+  thumbnail: String,
+  likes: mongoose.Schema.Types.Mixed,
+  likes_people: [String] 
 });
 
 module.exports = mongoose.model('User', UserSchema);

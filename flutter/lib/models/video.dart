@@ -41,4 +41,14 @@ class Video {
           .toList(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'slug': slug,
+      'title': title,
+      'url': url,
+      'description': description,
+    };
+  }
 }

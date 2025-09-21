@@ -2,7 +2,7 @@ const connect_to_db = require('./db');
 const User = require('./User'); // il modello User con mongoose
 
 // GET SIMILAR USERS BY VIDEO TAGS HANDLER
-module.exports.get_similar_users = async (event, context) => {
+module.exports.find_similar_user = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
 
     let body = {};
@@ -33,7 +33,7 @@ module.exports.get_similar_users = async (event, context) => {
         }
 
         // Troviamo gli altri utenti che hanno messo like a video con gli stessi tag
-        const similarUsers = await getUsersByTags(body.video_tags, user.user_id);
+        const similarUsers = await getUsersByTags(body.video_tags, user.user_id, body.page);
 
         return {
             statusCode: 200,
@@ -51,13 +51,13 @@ module.exports.get_similar_users = async (event, context) => {
 };
 
 // Funzione per trovare gli utenti che hanno messo like a video con gli stessi tag
-async function getUsersByTags(tags, currentUserId) {
+async function getUsersByTags(tags, currentUserId, page) {
     try {
         // Troviamo tutti gli utenti che hanno messo like a video con uno dei tag
         const users = await User.find({
             'likes.tags': { $in: tags },
             user_id: { $ne: currentUserId }  // Escludiamo l'utente che ha fatto la richiesta
-        });
+        }).limit(1).skip(page);
 
         // Restituiamo solo gli user_id degli utenti trovati
         return users.map(user => ({

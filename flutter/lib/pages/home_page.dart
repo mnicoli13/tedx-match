@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
-import '../hooks/user_repository.dart';
+import '../api/user_repository.dart';
 
 class HomePage extends StatefulWidget {
   final Function(User) onUserSelected;
